@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from core.database import engine, Base
-from routers import places
+from routers import places, stats
 
 
 @asynccontextmanager
@@ -29,6 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(places.router)
+app.include_router(stats.router)
 
 
 @app.get("/")
