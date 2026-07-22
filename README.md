@@ -1,22 +1,29 @@
-# Life Atlas
+# Atlas ¡ª Your Personal World Atlas
 
-Your personal world atlas ¡ª track places you've visited, lived, and loved.
+A personal world atlas that records where you've been, lived, studied, and explored.
 
 ## Project Structure
 
 `
-Life-Atlas/
-©À©¤©¤ frontend/          # Next.js + TypeScript
-©¦   ©¸©¤©¤ app/
-©¦       ©À©¤©¤ layout.tsx
-©¦       ©À©¤©¤ page.tsx
-©¦       ©¸©¤©¤ globals.css
-©À©¤©¤ backend/           # FastAPI
-©¦   ©À©¤©¤ main.py
-©¦   ©¸©¤©¤ requirements.txt
-©À©¤©¤ database/          # Database migrations and schemas (future)
-©À©¤©¤ docs/              # Documentation
+atlas/
+©À©¤©¤ apps/
+©¦   ©À©¤©¤ web/                 # Next.js + TypeScript frontend
+©¦   ©¸©¤©¤ api/                 # FastAPI backend
+©À©¤©¤ packages/
+©¦   ©À©¤©¤ ui/                  # Shared React components
+©¦   ©À©¤©¤ types/               # Shared TypeScript types
+©¦   ©À©¤©¤ map/                 # MapLibre GL wrapper
+©¦   ©¸©¤©¤ utils/               # Shared utilities
+©À©¤©¤ database/
+©¦   ©À©¤©¤ migrations/          # Database migrations
+©¦   ©À©¤©¤ seed/                # Seed data
+©¦   ©¸©¤©¤ schema.sql           # Core schema
+©À©¤©¤ storage/
+©¦   ©¸©¤©¤ covers/              # Place cover images (dev)
+©À©¤©¤ docker/                  # Docker configs
+©À©¤©¤ docs/                    # Documentation
 ©À©¤©¤ docker-compose.yml
+©À©¤©¤ package.json
 ©¸©¤©¤ README.md
 `
 
@@ -28,7 +35,7 @@ Life-Atlas/
 
 ## Setup
 
-### 1. Clone the repository
+### 1. Clone
 
 `ash
 git clone https://github.com/waitforlove7/life-atlas.git
@@ -41,45 +48,34 @@ cd life-atlas
 docker compose up -d
 `
 
-### 3. Set up the backend
+### 3. Set up the API
 
 `ash
-cd backend
-
-# Create virtual environment
+cd apps/api
 python -m venv venv
-
-# Activate (Windows)
+# Windows
 .\venv\Scripts\activate
-# Activate (macOS/Linux)
+# macOS / Linux
 source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Start the API server
 uvicorn main:app --reload --port 8000
 `
 
-The API will be available at http://localhost:8000.
+API ¡ú http://localhost:8000
 
 ### 4. Set up the frontend
 
 `ash
-cd frontend
-
-# Install dependencies
+cd apps/web
 npm install
-
-# Start the dev server
 npm run dev
 `
 
-The frontend will be available at http://localhost:3000.
+Frontend ¡ú http://localhost:3000
 
 ## Environment Variables
 
-Copy .env.example to .env and adjust as needed:
+Copy .env.example to .env:
 
 `ash
 cp .env.example .env
@@ -89,7 +85,8 @@ cp .env.example .env
 
 | Layer    | Technology              |
 | -------- | ----------------------- |
-| Frontend | Next.js, TypeScript, TailwindCSS |
+| Frontend | Next.js, TypeScript, TailwindCSS, shadcn/ui |
 | Backend  | FastAPI, Python         |
 | Database | PostgreSQL + PostGIS    |
+| Storage  | MinIO (planned), local files (dev) |
 | Infra    | Docker Compose          |

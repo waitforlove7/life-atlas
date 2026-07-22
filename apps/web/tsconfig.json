@@ -13,14 +13,17 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
-    }
+      "@/*": ["./*"],
+      "@atlas/ui": ["../../packages/ui/src"],
+      "@atlas/types": ["../../packages/types/src"],
+      "@atlas/map": ["../../packages/map/src"],
+      "@atlas/utils": ["../../packages/utils/src"]
+    },
+    "plugins": [
+      { "name": "next" }
+    ]
   },
   "include": [
     "next-env.d.ts",
