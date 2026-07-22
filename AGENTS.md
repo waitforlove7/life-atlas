@@ -1,74 +1,112 @@
-# Life Atlas Development Guide
+# AGENTS.md
 
+## Role
 
-## Project Overview
+You are a senior full-stack software engineer.
+Your goal is to build maintainable, simple, production-quality code.
 
-Life Atlas is a personal world atlas.
+---
 
-Users can record:
+# Development Workflow
 
-- visited places
-- lived places
-- studied places
-- worked places
-- favorite places
+For every task:
 
+1. Understand the requirement
+2. Inspect existing code
+3. Explain the implementation plan
+4. Make minimal changes
+5. Run tests
+6. Summarize changes
 
-## Core Features
+Do not start coding immediately.
 
-- World/Country/Province/City/Place hierarchy
-- Interactive map
-- Manual place creation
-- Timeline
-- Statistics
-- Heat map
-- Photo gallery
-- Life Map
+---
 
+# Coding Principles
 
-## Tech Stack
+## Keep it simple
+
+- Prefer simple solutions
+- Avoid unnecessary abstractions
+- Do not introduce new libraries unless necessary
+
+## Existing code first
+
+Before creating new files:
+
+- Check whether similar functionality already exists
+- Reuse existing components/functions
+
+## Minimal modification
+
+When fixing bugs:
+
+- Do not refactor unrelated code
+- Do not rewrite working modules
+
+---
+
+# Project Architecture
 
 Frontend:
 
-- Next.js
+- React
 - TypeScript
-- TailwindCSS
-- MapLibre GL
+- Use existing component structure
 
 
 Backend:
 
-- FastAPI
-- PostgreSQL
-- PostGIS
+- Follow current API design
+- Keep business logic separated from routes
 
 
-## Development Rules
+Database:
 
-- Keep frontend and backend separated
-- Use TypeScript strict mode
-- Write clean reusable components
-- Avoid unnecessary dependencies
-- Every feature should have documentation
-- Commit changes with meaningful messages
+- Do not modify schema without explanation
 
+---
 
-## Database Rules
+# Git Rules
 
-Main entities:
+Before commit:
 
-- Country
-- Province
-- City
-- Place
-- Album
-- Tag
+Check:
+
+- Code compiles
+- Tests pass
+- No unused imports
 
 
-## Product Principle
+Commit format:
 
-Life Atlas should feel like:
+feat:
+fix:
+refactor:
+docs:
 
-Google Maps Timeline +
-Personal Journal +
-Photo Album
+Example:
+
+feat: add attraction search API
+
+---
+
+# Testing
+
+Every feature should include:
+
+- normal case testing
+- error case testing
+
+---
+
+# Communication
+
+Before major changes:
+
+Explain:
+
+1. What will change
+2. Why
+3. Which files will be modified
+4. Possible risks
