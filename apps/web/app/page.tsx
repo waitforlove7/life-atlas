@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
@@ -54,7 +54,7 @@ export default function Home() {
     });
     map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-    map.current.on('load', () => {
+    map.current.once('load', () => {
       if (!map.current) return;
 
       // --- Country fill layer ---
