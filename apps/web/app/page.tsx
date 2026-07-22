@@ -108,63 +108,41 @@ export default function Home() {
     };
   }, []);
 
-  // Load GADM province boundaries when zooming into a country
-  useEffect(() => {
+  // Load GADM province boundaries when a country is clicked
+  async function loadProvinces(iso: string) {
     if (!map.current) return;
-    const handleZoom = async () => {
-      if (!map.current || map.current.getZoom() < 5) return;
-      // Determine which country is in view (simplified: check center point)
-      const center = map.current.getCenter();
-      const features = map.current.queryRenderedFeatures(
-        map.current.project([center.lng, center.lat]),
-        { layers: ['countries-fill'] }
-      );
-      if (!features.length) return;
-      const iso = (features[0].properties as Record<string, string>).ISO_A3;
-      if (!iso || iso === currentIso.current) return;
-      currentIso.current = iso;
+    currentIso.current = iso;
+    try {
+      const resp = await fetch('/data/gadm/' + iso + '/level_1.json');
+      if (!resp.ok) return;
+      const geojson = await resp.json();
 
-      try {
-        const resp = await fetch('/data/gadm/' + iso + '/level_1.json');
-        if (!resp.ok) return;
-        const geojson = await resp.json();
+      if (map.current.getLayer('provinces-fill')) map.current.removeLayer('provinces-fill');
+      if (map.current.getLayer('provinces-outline')) map.current.removeLayer('provinces-outline');
+      if (map.current.getSource('provinces')) map.current.removeSource('provinces');
 
-        // Remove old province layers if any
-        if (map.current.getLayer('provinces-fill')) map.current.removeLayer('provinces-fill');
-        if (map.current.getLayer('provinces-outline')) map.current.removeLayer('provinces-outline');
-        if (map.current.getSource('provinces')) map.current.removeSource('provinces');
+      geojson.features.forEach((f: { properties: Record<string, unknown> }) => {
+        const name = f.properties.NAME_1 as string;
+        (f.properties as Record<string, unknown>).visited = matchProvinceVisited(name, provinceStats);
+      });
 
-        // Add visited status to properties
-        geojson.features.forEach((f: { properties: Record<string, unknown> }) => {
-          const name = f.properties.NAME_1 as string;
-          (f.properties as Record<string, unknown>).visited = matchProvinceVisited(name, provinceStats);
-        });
+      map.current.addSource('provinces', { type: 'geojson', data: geojson });
+      map.current.addLayer({ id: 'provinces-fill', type: 'fill', source: 'provinces',
+        paint: { 'fill-color': ['case', ['get', 'visited'], '#bbf7d0', '#e5e7eb'], 'fill-opacity': 0.5 } });
+      map.current.addLayer({ id: 'provinces-outline', type: 'line', source: 'provinces',
+        paint: { 'line-color': '#9ca3af', 'line-width': 0.5 } });
 
-        map.current.addSource('provinces', { type: 'geojson', data: geojson });
-        map.current.addLayer({ id: 'provinces-fill', type: 'fill', source: 'provinces',
-          paint: { 'fill-color': ['case', ['get', 'visited'], '#bbf7d0', '#e5e7eb'], 'fill-opacity': 0.5 } });
-        map.current.addLayer({ id: 'provinces-outline', type: 'line', source: 'provinces',
-          paint: { 'line-color': '#9ca3af', 'line-width': 0.5 } });
+      map.current.on('click', 'provinces-fill', (e) => {
+        if (!e.features?.length || !map.current) return;
+        const props = e.features[0].properties as Record<string, unknown>;
+        new maplibregl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML('<strong>' + (props.NAME_1 || '') + '</strong><br/>' + (props.visited ? 'Visited' : 'Not visited'))
+          .addTo(map.current);
+      });
+    } catch { /* no GADM data */ }
+  }
 
-        // Province click
-        map.current.on('click', 'provinces-fill', (e) => {
-          if (!e.features?.length || !map.current) return;
-          const props = e.features[0].properties as Record<string, unknown>;
-          new maplibregl.Popup()
-            .setLngLat(e.lngLat)
-            .setHTML('<strong>' + (props.NAME_1 || '') + '</strong><br/>' + (props.visited ? 'Visited' : 'Not visited'))
-            .addTo(map.current);
-        });
-      } catch { /* GADM data not available for this country */ }
-    };
-
-    map.current.on('zoom', handleZoom);
-    map.current.on('moveend', handleZoom);
-    return () => {
-      map.current?.off('zoom', handleZoom);
-      map.current?.off('moveend', handleZoom);
-    };
-  }, [provinceStats]);
 
   // Update country fill when visitedCountries changes
   useEffect(() => {
