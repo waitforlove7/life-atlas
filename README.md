@@ -1,85 +1,83 @@
-# Atlas ¡ª Your Personal World Atlas
+# Atlas éˆ¥?Your Personal World Atlas
 
 A personal world atlas that records where you've been, lived, studied, and explored.
 
-## Project Structure
+## Quick Start (Docker)
 
-`
-atlas/
-©À©¤©¤ apps/
-©¦   ©À©¤©¤ web/                 # Next.js + TypeScript frontend
-©¦   ©¸©¤©¤ api/                 # FastAPI backend
-©À©¤©¤ packages/
-©¦   ©À©¤©¤ ui/                  # Shared React components
-©¦   ©À©¤©¤ types/               # Shared TypeScript types
-©¦   ©À©¤©¤ map/                 # MapLibre GL wrapper
-©¦   ©¸©¤©¤ utils/               # Shared utilities
-©À©¤©¤ database/
-©¦   ©À©¤©¤ migrations/          # Database migrations
-©¦   ©À©¤©¤ seed/                # Seed data
-©¦   ©¸©¤©¤ schema.sql           # Core schema
-©À©¤©¤ storage/
-©¦   ©¸©¤©¤ covers/              # Place cover images (dev)
-©À©¤©¤ docker/                  # Docker configs
-©À©¤©¤ docs/                    # Documentation
-©À©¤©¤ docker-compose.yml
-©À©¤©¤ package.json
-©¸©¤©¤ README.md
-`
+```bash
+# 1. Ensure boundary data exists
+python scripts/fetch_boundaries.py
 
-## Prerequisites
-
-- Node.js 18+
-- Python 3.11+
-- Docker & Docker Compose
-
-## Setup
-
-### 1. Clone
-
-`ash
-git clone https://github.com/waitforlove7/life-atlas.git
-cd life-atlas
-`
-
-### 2. Start PostgreSQL
-
-`ash
+# 2. Start everything
 docker compose up -d
-`
 
-### 3. Set up the API
+# 3. Open http://localhost:3000
+```
 
-`ash
+That is it. The compose file starts PostgreSQL + PostGIS, the FastAPI backend,
+and the Next.js frontend in one command.
+
+### Modifying after build
+
+The Docker images are immutable éˆ¥?edit source files, then rebuild and restart:
+
+```bash
+docker compose build   # rebuild changed layers (cache speeds this up)
+docker compose up -d   # restart with new images
+```
+
+Your data (places, photos, tags) lives in the database and the `covers` volume,
+so it survives rebuilds.
+
+### Development (without Docker for the apps)
+
+```bash
+# Start only the database
+docker compose up -d db
+
+# API
 cd apps/api
 python -m venv venv
-# Windows
-.\venv\Scripts\activate
-# macOS / Linux
-source venv/bin/activate
+venv\Scripts\activate      # Windows
 pip install -r requirements.txt
+alembic upgrade head
 uvicorn main:app --reload --port 8000
-`
 
-API ¡ú http://localhost:8000
-
-### 4. Set up the frontend
-
-`ash
+# Frontend
 cd apps/web
 npm install
 npm run dev
-`
+```
 
-Frontend ¡ú http://localhost:3000
+API éˆ«?http://localhost:8000
+Frontend éˆ«?http://localhost:3000
 
-## Environment Variables
+## Project Structure
 
-Copy .env.example to .env:
-
-`ash
-cp .env.example .env
-`
+```text
+atlas/
+éˆ¹æº¾æ”¢éˆ¹â‚¬ apps/
+éˆ¹?  éˆ¹æº¾æ”¢éˆ¹â‚¬ web/                 # Next.js + TypeScript frontend
+éˆ¹?  éˆ¹æ–ºæ”¢éˆ¹â‚¬ api/                 # FastAPI backend
+éˆ¹æº¾æ”¢éˆ¹â‚¬ packages/
+éˆ¹?  éˆ¹æº¾æ”¢éˆ¹â‚¬ ui/                  # Shared React components
+éˆ¹?  éˆ¹æº¾æ”¢éˆ¹â‚¬ types/               # Shared TypeScript types
+éˆ¹?  éˆ¹æº¾æ”¢éˆ¹â‚¬ map/                 # MapLibre GL wrapper
+éˆ¹?  éˆ¹æ–ºæ”¢éˆ¹â‚¬ utils/               # Shared utilities
+éˆ¹æº¾æ”¢éˆ¹â‚¬ docker/
+éˆ¹?  éˆ¹æº¾æ”¢éˆ¹â‚¬ Dockerfile.api       # FastAPI production image
+éˆ¹?  éˆ¹æ–ºæ”¢éˆ¹â‚¬ Dockerfile.web       # Next.js production image
+éˆ¹æº¾æ”¢éˆ¹â‚¬ database/
+éˆ¹?  éˆ¹æº¾æ”¢éˆ¹â‚¬ migrations/          # Database migrations
+éˆ¹?  éˆ¹æº¾æ”¢éˆ¹â‚¬ seed/                # Seed data
+éˆ¹?  éˆ¹æ–ºæ”¢éˆ¹â‚¬ schema.sql           # Core schema
+éˆ¹æº¾æ”¢éˆ¹â‚¬ storage/
+éˆ¹?  éˆ¹æ–ºæ”¢éˆ¹â‚¬ covers/              # Place cover images (dev)
+éˆ¹æº¾æ”¢éˆ¹â‚¬ scripts/                 # Utility scripts (boundary fetch, etc.)
+éˆ¹æº¾æ”¢éˆ¹â‚¬ docker-compose.yml
+éˆ¹æº¾æ”¢éˆ¹â‚¬ package.json
+éˆ¹æ–ºæ”¢éˆ¹â‚¬ README.md
+```
 
 ## Tech Stack
 
@@ -90,3 +88,28 @@ cp .env.example .env
 | Database | PostgreSQL + PostGIS    |
 | Storage  | MinIO (planned), local files (dev) |
 | Infra    | Docker Compose          |
+
+## Map hierarchy
+
+Atlas intentionally uses three map levels:
+
+```text
+Country éˆ«?Province / first-level region éˆ«?Place
+```
+
+Countries and provinces are gray until they contain a non-wishlist Place. The
+visited color is calculated from Places instead of stored as a separate flag,
+so deleting the last Place immediately turns its regions gray again.
+
+Global country and first-level boundary assets are generated from public-domain
+Natural Earth data. See `docs/map-boundaries.md`.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` for local development. Docker Compose sets
+these automatically.
+
+| Variable             | Default                                                 |
+| -------------------- | ------------------------------------------------------- |
+| DATABASE_URL         | postgresql+asyncpg://atlas:atlas@localhost:5432/lifeatlas |
+| NEXT_PUBLIC_API_URL  | http://localhost:8000                                   |

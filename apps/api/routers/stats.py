@@ -1,48 +1,146 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from core.database import get_db
 from models.country import Country
+from models.place import Place, PlaceStatus
 from models.province import Province
-from models.city import City
-from models.place import Place
+from models.tag import Tag, place_tags
+from services.places import MAP_LIGHTING_STATUSES
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 
+def _visited_place_filter():
+    return Place.status.in_(MAP_LIGHTING_STATUSES)
+
+
 @router.get("/countries")
 async def get_countries(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Country).order_by(Country.name))
-    return [{"iso_code": c.iso_code, "name": c.name, "visited": c.visited} for c in result.scalars().all()]
+    rows = (
+        await db.execute(
+            select(
+                Country.iso_code,
+                Country.name,
+                (func.count(Place.id).filter(_visited_place_filter()) > 0).label("visited"),
+            )
+            .outerjoin(Country.provinces)
+            .outerjoin(Province.places)
+            .group_by(Country.id)
+            .order_by(Country.name)
+        )
+    ).all()
+    return [
+        {"iso_code": iso_code, "name": name, "visited": visited}
+        for iso_code, name, visited in rows
+    ]
 
 
 @router.get("/provinces")
 async def get_provinces(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Province).options(selectinload(Province.country)).order_by(Province.name)
-    )
-    return [{"id": str(p.id), "name": p.name, "country": p.country.name, "visited": p.visited} for p in result.scalars().all()]
-
-
-@router.get("/cities")
-async def get_cities(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(City).options(selectinload(City.province).selectinload(Province.country)).order_by(City.name)
-    )
-    return [{"id": str(c.id), "name": c.name, "province": c.province.name, "country": c.province.country.name, "visited": c.visited} for c in result.scalars().all()]
+    rows = (
+        await db.execute(
+            select(
+                Province.id,
+                Province.code,
+                Province.name,
+                Country.iso_code,
+                Country.name,
+                (func.count(Place.id).filter(_visited_place_filter()) > 0).label("visited"),
+            )
+            .join(Province.country)
+            .outerjoin(Province.places)
+            .group_by(Province.id, Country.id)
+            .order_by(Country.name, Province.name)
+        )
+    ).all()
+    return [
+        {
+            "id": str(province_id),
+            "code": code,
+            "name": name,
+            "country_iso": country_iso,
+            "country": country,
+            "visited": visited,
+        }
+        for province_id, code, name, country_iso, country, visited in rows
+    ]
 
 
 @router.get("/summary")
 async def get_summary(db: AsyncSession = Depends(get_db)):
-    countries = (await db.execute(select(Country))).scalars().all()
-    provinces = (await db.execute(select(Province))).scalars().all()
-    cities = (await db.execute(select(City))).scalars().all()
-    places = (await db.execute(select(Place))).scalars().all()
+    countries_visited = await db.scalar(
+        select(func.count(distinct(Country.id)))
+        .join(Country.provinces)
+        .join(Province.places)
+        .where(_visited_place_filter())
+    )
+    provinces_visited = await db.scalar(
+        select(func.count(distinct(Province.id)))
+        .join(Province.places)
+        .where(_visited_place_filter())
+    )
+    places_total = await db.scalar(select(func.count(Place.id)))
     return {
-        "countries_total": len(countries), "countries_visited": sum(1 for c in countries if c.visited),
-        "provinces_total": len(provinces), "provinces_visited": sum(1 for p in provinces if p.visited),
-        "cities_total": len(cities), "cities_visited": sum(1 for c in cities if c.visited),
-        "places_total": len(places),
+        "countries_visited": countries_visited or 0,
+        "provinces_visited": provinces_visited or 0,
+        "places_total": places_total or 0,
     }
+
+
+
+@router.get("/status-breakdown")
+async def get_status_breakdown(db: AsyncSession = Depends(get_db)):
+    rows = (
+        await db.execute(
+            select(Place.status, func.count(Place.id))
+            .group_by(Place.status)
+            .order_by(Place.status)
+        )
+    ).all()
+    breakdown = {row[0].value: row[1] for row in rows}
+    total = sum(breakdown.values()) or 1
+    return [
+        {
+            "status": status.value,
+            "count": breakdown.get(status.value, 0),
+            "percentage": round(breakdown.get(status.value, 0) / total * 100, 1),
+        }
+        for status in PlaceStatus
+    ]
+
+
+@router.get("/timeline")
+async def get_timeline(db: AsyncSession = Depends(get_db)):
+    rows = (
+        await db.execute(
+            select(
+                func.date_trunc("month", Place.created_at).label("month"),
+                func.count(Place.id).label("count"),
+            )
+            .group_by("month")
+            .order_by("month")
+        )
+    ).all()
+    return [
+        {
+            "month": str(row[0]),
+            "count": row[1],
+            "cumulative": sum(r[1] for r in rows[: idx + 1]),
+        }
+        for idx, row in enumerate(rows)
+    ]
+
+
+@router.get("/tags")
+async def get_tag_stats(db: AsyncSession = Depends(get_db)):
+    rows = (
+        await db.execute(
+            select(Tag.name, func.count(place_tags.c.place_id).label("count"))
+            .join(place_tags, Tag.id == place_tags.c.tag_id)
+            .group_by(Tag.id)
+            .order_by(func.count(place_tags.c.place_id).desc())
+        )
+    ).all()
+    return [{"name": name, "count": count} for name, count in rows]

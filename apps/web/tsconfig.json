@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -13,16 +17,27 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@atlas/ui": ["../../packages/ui/src"],
-      "@atlas/types": ["../../packages/types/src"],
-      "@atlas/map": ["../../packages/map/src"],
-      "@atlas/utils": ["../../packages/utils/src"]
+      "@/*": [
+        "./*"
+      ],
+      "@atlas/ui": [
+        "../../packages/ui/src"
+      ],
+      "@atlas/types": [
+        "../../packages/types/src"
+      ],
+      "@atlas/map": [
+        "../../packages/map/src"
+      ],
+      "@atlas/utils": [
+        "../../packages/utils/src"
+      ]
     },
     "plugins": [
-      { "name": "next" }
+      {
+        "name": "next"
+      }
     ]
   },
   "include": [
@@ -33,5 +48,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

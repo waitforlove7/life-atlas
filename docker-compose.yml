@@ -1,20 +1,46 @@
 services:
-  postgres:
+  db:
     image: postgis/postgis:16-3.4
-    container_name: life-atlas-db
     environment:
       POSTGRES_USER: atlas
       POSTGRES_PASSWORD: atlas
       POSTGRES_DB: lifeatlas
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U atlas -d lifeatlas']
+      test: ["CMD-SHELL", "pg_isready -U atlas -d lifeatlas"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://atlas:atlas@db:5432/lifeatlas
+      DEBUG: "false"
+    volumes:
+      - covers:/app/storage/covers
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - api
+
 volumes:
   pgdata:
+  covers:

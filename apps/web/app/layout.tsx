@@ -4,6 +4,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Atlas - Your Personal World Atlas',
   description: 'Record where you have been, lived, studied, and explored.',
+  icons: {
+    icon: '/atlas-icon.svg',
+  },
 };
 
 export default function RootLayout({
