@@ -1,2 +1,10 @@
 fastapi
 uvicorn
+sqlalchemy[asyncio]
+asyncpg
+geoalchemy2
+shapely
+alembic
+pydantic
+pydantic-settings
+python-dotenv
