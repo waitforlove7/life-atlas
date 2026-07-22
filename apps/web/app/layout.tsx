@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Life Atlas",
-  description: "Your personal world atlas - track places you've visited, lived, and loved.",
+  title: 'Atlas ¡ª Your Personal World Atlas',
+  description: 'Record where you have been, lived, studied, and explored.',
 };
 
 export default function RootLayout({
@@ -12,8 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full">{children}</body>
+    <html lang='en'>
+      <body>{children}</body>
     </html>
   );
 }
