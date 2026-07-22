@@ -9,7 +9,7 @@ class PlaceCreate(BaseModel):
     longitude: float = Field(..., ge=-180, le=180)
     latitude: float = Field(..., ge=-90, le=90)
     status: str = Field(default="visited", pattern=r"^(visited|wishlist|lived|worked|studied)$")
-    visit_date: date | None = None
+    visits: list[date] = []
     description: str | None = None
     cover_image: str | None = None
     # Location hierarchy — create or look up by name
@@ -24,7 +24,7 @@ class PlaceUpdate(BaseModel):
     longitude: float | None = Field(None, ge=-180, le=180)
     latitude: float | None = Field(None, ge=-90, le=90)
     status: str | None = Field(None, pattern=r"^(visited|wishlist|lived|worked|studied)$")
-    visit_date: date | None = None
+    visits: list[date] = []
     description: str | None = None
     cover_image: str | None = Field(None, max_length=500)
 
@@ -38,13 +38,9 @@ class AlbumResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class TagCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-
-
-class TagResponse(BaseModel):
+class VisitResponse(BaseModel):
     id: UUID
-    name: str
+    visit_date: date
 
     model_config = {"from_attributes": True}
 
@@ -55,7 +51,7 @@ class PlaceResponse(BaseModel):
     longitude: float
     latitude: float
     status: str
-    visit_date: date | None
+    visits: list["VisitResponse"] = []
     description: str | None
     cover_image: str | None
     country: str
@@ -64,7 +60,6 @@ class PlaceResponse(BaseModel):
     province_code: str
     created_at: datetime
     albums: list[AlbumResponse] = []
-    tags: list[TagResponse] = []
 
     model_config = {"from_attributes": True}
 

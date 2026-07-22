@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,9 +12,9 @@ from core.database import get_db
 from models.country import Country
 from models.album import Album
 from models.place import Place, PlaceStatus
+from models.visit import Visit
 from models.province import Province
-from models.tag import Tag
-from schemas.place import AlbumResponse, PlaceCreate, PlaceResponse, PlaceSummary, PlaceUpdate, TagResponse
+from schemas.place import AlbumResponse, PlaceCreate, PlaceResponse, PlaceSummary, PlaceUpdate, VisitResponse
 
 router = APIRouter(prefix="/places", tags=["places"])
 
@@ -30,7 +31,7 @@ def _build_response(place: Place) -> PlaceResponse:
         longitude=point.x,
         latitude=point.y,
         status=_status_value(place.status),
-        visit_date=place.visit_date,
+        visits=[VisitResponse.model_validate(v) for v in place.visits],
         description=place.description,
         cover_image=place.cover_image,
         country=place.province.country.name,
@@ -39,7 +40,6 @@ def _build_response(place: Place) -> PlaceResponse:
         province_code=place.province.code,
         created_at=place.created_at,
         albums=[AlbumResponse.model_validate(album) for album in place.albums],
-        tags=[TagResponse.model_validate(tag) for tag in place.tags],
     )
 
 
@@ -85,7 +85,7 @@ def _with_geography():
     return (
         selectinload(Place.province).selectinload(Province.country),
         selectinload(Place.albums),
-        selectinload(Place.tags),
+        selectinload(Place.visits),
     )
 
 
@@ -102,13 +102,14 @@ async def create_place(
         province_id=province.id,
         location=from_shape(Point(payload.longitude, payload.latitude), srid=4326),
         status=payload.status,
-        visit_date=payload.visit_date,
         description=payload.description,
         cover_image=payload.cover_image,
     )
     db.add(place)
+    await db.flush()
+    for visit_date in (payload.visits or []):
+        db.add(Visit(place_id=place.id, visit_date=visit_date))
     await db.commit()
-
     result = await db.execute(
         select(Place).where(Place.id == place.id).options(*_with_geography())
     )
@@ -131,7 +132,7 @@ async def list_places(
             .where(Country.iso_code == country.upper())
         )
 
-    places = (await db.execute(stmt.order_by(Place.visit_date.desc()))).scalars().all()
+    places = (await db.execute(stmt.order_by(Place.created_at.desc()))).scalars().all()
     return [
         PlaceSummary(
             id=place.id,
@@ -175,6 +176,7 @@ async def update_place(
         raise HTTPException(status_code=404, detail="Place not found")
 
     changes = payload.model_dump(exclude_unset=True)
+    changes.pop("visit_date", None)
     longitude = changes.pop("longitude", None)
     latitude = changes.pop("latitude", None)
     if longitude is not None or latitude is not None:
@@ -203,4 +205,28 @@ async def delete_place(place_id: UUID, db: AsyncSession = Depends(get_db)) -> No
     if place is None:
         raise HTTPException(status_code=404, detail="Place not found")
     await db.delete(place)
+    await db.commit()
+
+@router.post("/{place_id}/visits", response_model=VisitResponse, status_code=201)
+async def add_visit(
+    place_id: UUID, visit_date: date, db: AsyncSession = Depends(get_db)
+) -> VisitResponse:
+    place = await db.get(Place, place_id)
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    visit = Visit(place_id=place_id, visit_date=visit_date)
+    db.add(visit)
+    await db.commit()
+    await db.refresh(visit)
+    return VisitResponse.model_validate(visit)
+
+
+@router.delete("/{place_id}/visits/{visit_id}", status_code=204)
+async def remove_visit(
+    place_id: UUID, visit_id: UUID, db: AsyncSession = Depends(get_db)
+) -> None:
+    visit = await db.get(Visit, visit_id)
+    if visit is None or visit.place_id != place_id:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    await db.delete(visit)
     await db.commit()

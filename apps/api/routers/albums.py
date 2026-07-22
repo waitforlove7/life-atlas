@@ -1,8 +1,7 @@
-from datetime import date
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,8 +26,6 @@ async def _require_place(place_id: UUID, db: AsyncSession) -> None:
 async def upload_album_image(
     place_id: UUID,
     image: UploadFile = File(...),
-    caption: str | None = Form(None),
-    taken_at: date | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ) -> AlbumResponse:
     await _require_place(place_id, db)
@@ -43,7 +40,7 @@ async def upload_album_image(
     filename = f"{uuid4().hex}{suffix}"
     target = STORAGE_DIR / filename
     target.write_bytes(contents)
-    album = Album(place_id=place_id, image_url=f"/storage/covers/{filename}", caption=caption or None, taken_at=taken_at)
+    album = Album(place_id=place_id, image_url=f"/storage/covers/{filename}")
     db.add(album)
     try:
         await db.commit()

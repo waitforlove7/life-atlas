@@ -38,5 +38,5 @@ CREATE INDEX idx_places_location ON places USING GIST (location);
 CREATE INDEX idx_places_province ON places (province_id);
 CREATE INDEX idx_places_status ON places (status);
 
--- albums, tags, and place_tags remain Place-owned supporting tables.
+-- albums remain Place-owned supporting tables.
 -- Country and province "visited" state is derived from non-wishlist Places.

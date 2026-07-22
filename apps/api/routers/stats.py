@@ -6,7 +6,7 @@ from core.database import get_db
 from models.country import Country
 from models.place import Place, PlaceStatus
 from models.province import Province
-from models.tag import Tag, place_tags
+from models.visit import Visit
 from services.places import MAP_LIGHTING_STATUSES
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -113,14 +113,16 @@ async def get_status_breakdown(db: AsyncSession = Depends(get_db)):
 
 @router.get("/timeline")
 async def get_timeline(db: AsyncSession = Depends(get_db)):
+    month = func.to_char(Visit.visit_date, "YYYY-MM")
     rows = (
         await db.execute(
             select(
-                func.date_trunc("month", Place.created_at).label("month"),
-                func.count(Place.id).label("count"),
+                month.label("month"),
+                func.count(Visit.id).label("count"),
             )
-            .group_by("month")
-            .order_by("month")
+            .select_from(Visit)
+            .group_by(month)
+            .order_by(month)
         )
     ).all()
     return [
@@ -131,16 +133,3 @@ async def get_timeline(db: AsyncSession = Depends(get_db)):
         }
         for idx, row in enumerate(rows)
     ]
-
-
-@router.get("/tags")
-async def get_tag_stats(db: AsyncSession = Depends(get_db)):
-    rows = (
-        await db.execute(
-            select(Tag.name, func.count(place_tags.c.place_id).label("count"))
-            .join(place_tags, Tag.id == place_tags.c.tag_id)
-            .group_by(Tag.id)
-            .order_by(func.count(place_tags.c.place_id).desc())
-        )
-    ).all()
-    return [{"name": name, "count": count} for name, count in rows]

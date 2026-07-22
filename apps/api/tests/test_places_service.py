@@ -1,9 +1,10 @@
 import unittest
+from datetime import date
 
 from pydantic import ValidationError
 
 from models.place import PlaceStatus
-from schemas.place import PlaceCreate, PlaceUpdate, TagCreate
+from schemas.place import PlaceCreate, PlaceUpdate
 from services.places import status_lights_map
 
 
@@ -28,6 +29,19 @@ class StatusLightsMapTests(unittest.TestCase):
         )
         self.assertEqual(place.country_iso, "SGP")
 
+    def test_place_accepts_multiple_visit_dates(self):
+        place = PlaceCreate(
+            name="Repeated visit",
+            longitude=103.8,
+            latitude=1.3,
+            country_name="Singapore",
+            country_iso="SGP",
+            province_name="Singapore",
+            province_code="SG-01",
+            visits=[date(2026, 7, 20), date(2026, 7, 20), date(2026, 7, 21)],
+        )
+        self.assertEqual(len(place.visits), 3)
+
     def test_place_rejects_invalid_country_code(self):
         with self.assertRaises(ValidationError):
             PlaceCreate(
@@ -48,11 +62,6 @@ class StatusLightsMapTests(unittest.TestCase):
     def test_place_update_rejects_invalid_coordinates(self):
         with self.assertRaises(ValidationError):
             PlaceUpdate(latitude=91)
-
-    def test_tag_rejects_empty_name(self):
-        with self.assertRaises(ValidationError):
-            TagCreate(name="")
-
 
 if __name__ == "__main__":
     unittest.main()

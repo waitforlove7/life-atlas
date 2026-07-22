@@ -1,115 +1,217 @@
-# Atlas 鈥?Your Personal World Atlas
+# Life Atlas
 
-A personal world atlas that records where you've been, lived, studied, and explored.
+Life Atlas 是一个个人旅行与生活地图，用来记录去过、居住、工作、学习或计划前往的地点，并在地图和统计面板中查看自己的经历。
 
-## Quick Start (Docker)
+## 功能
 
-```bash
-# 1. Ensure boundary data exists
-python scripts/fetch_boundaries.py
+- 国家、省/州及地点三级地图浏览
+- 地点状态：`visited`、`wishlist`、`lived`、`worked`、`studied`
+- 地点详情、描述和封面图片
+- 访问记录及按月份统计的 Timeline
+- 国家、省/州、地点数量统计
+- PostgreSQL + PostGIS 地理数据存储
 
-# 2. Start everything
-docker compose up -d
+## 技术栈
 
-# 3. Open http://localhost:3000
+- 前端：Next.js、React、TypeScript、MapLibre GL
+- 后端：FastAPI、SQLAlchemy、Alembic
+- 数据库：PostgreSQL + PostGIS
+- 部署：Docker Compose
+
+## 快速启动：Docker
+
+要求：已安装 Docker Desktop，并确保 Docker 服务正在运行。
+
+```powershell
+# 在项目根目录执行
+docker compose up -d --build
 ```
 
-That is it. The compose file starts PostgreSQL + PostGIS, the FastAPI backend,
-and the Next.js frontend in one command.
+启动后访问：
 
-### Modifying after build
+- 前端：http://localhost:3000
+- API：http://localhost:8000
+- API 文档：http://localhost:8000/docs
 
-The Docker images are immutable 鈥?edit source files, then rebuild and restart:
+检查服务状态：
 
-```bash
-docker compose build   # rebuild changed layers (cache speeds this up)
-docker compose up -d   # restart with new images
+```powershell
+docker compose ps
+docker compose logs -f api
 ```
 
-Your data (places, photos, tags) lives in the database and the `covers` volume,
-so it survives rebuilds.
+停止服务：
 
-### Development (without Docker for the apps)
+```powershell
+docker compose down
+```
 
-```bash
-# Start only the database
+数据库数据保存在 Docker volume `pgdata` 中，地点封面保存在 `covers` volume 中。
+
+## 本地开发
+
+### 1. 启动数据库
+
+如果本机没有 PostgreSQL/PostGIS，先启动 Docker 中的数据库：
+
+```powershell
 docker compose up -d db
+```
 
-# API
+### 2. 启动后端
+
+```powershell
 cd apps/api
 python -m venv venv
-venv\Scripts\activate      # Windows
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 alembic upgrade head
-uvicorn main:app --reload --port 8000
+python -m uvicorn main:app --reload --port 8000
+```
 
-# Frontend
+验证后端是否正常：
+
+```text
+http://localhost:8000/
+```
+
+正常响应：
+
+```json
+{"message":"Life Atlas API running"}
+```
+
+### 3. 启动前端
+
+新开一个终端：
+
+```powershell
 cd apps/web
 npm install
 npm run dev
 ```
 
-API 鈫?http://localhost:8000
-Frontend 鈫?http://localhost:3000
+前端地址：http://localhost:3000
 
-## Project Structure
+如果 PowerShell 禁止执行 `npm.ps1`，使用对应的命令行入口：
 
-```text
-atlas/
-鈹溾攢鈹€ apps/
-鈹?  鈹溾攢鈹€ web/                 # Next.js + TypeScript frontend
-鈹?  鈹斺攢鈹€ api/                 # FastAPI backend
-鈹溾攢鈹€ packages/
-鈹?  鈹溾攢鈹€ ui/                  # Shared React components
-鈹?  鈹溾攢鈹€ types/               # Shared TypeScript types
-鈹?  鈹溾攢鈹€ map/                 # MapLibre GL wrapper
-鈹?  鈹斺攢鈹€ utils/               # Shared utilities
-鈹溾攢鈹€ docker/
-鈹?  鈹溾攢鈹€ Dockerfile.api       # FastAPI production image
-鈹?  鈹斺攢鈹€ Dockerfile.web       # Next.js production image
-鈹溾攢鈹€ database/
-鈹?  鈹溾攢鈹€ migrations/          # Database migrations
-鈹?  鈹溾攢鈹€ seed/                # Seed data
-鈹?  鈹斺攢鈹€ schema.sql           # Core schema
-鈹溾攢鈹€ storage/
-鈹?  鈹斺攢鈹€ covers/              # Place cover images (dev)
-鈹溾攢鈹€ scripts/                 # Utility scripts (boundary fetch, etc.)
-鈹溾攢鈹€ docker-compose.yml
-鈹溾攢鈹€ package.json
-鈹斺攢鈹€ README.md
+```powershell
+npm.cmd run dev
 ```
 
-## Tech Stack
+## 常用命令
 
-| Layer    | Technology              |
-| -------- | ----------------------- |
-| Frontend | Next.js, TypeScript, TailwindCSS, shadcn/ui |
-| Backend  | FastAPI, Python         |
-| Database | PostgreSQL + PostGIS    |
-| Storage  | MinIO (planned), local files (dev) |
-| Infra    | Docker Compose          |
+在项目根目录：
 
-## Map hierarchy
-
-Atlas intentionally uses three map levels:
-
-```text
-Country 鈫?Province / first-level region 鈫?Place
+```powershell
+npm run dev:web
+npm run dev:api
+npm run build
 ```
 
-Countries and provinces are gray until they contain a non-wishlist Place. The
-visited color is calculated from Places instead of stored as a separate flag,
-so deleting the last Place immediately turns its regions gray again.
+前端检查和构建：
 
-Global country and first-level boundary assets are generated from public-domain
-Natural Earth data. See `docs/map-boundaries.md`.
+```powershell
+npm.cmd run lint --prefix apps/web
+npm.cmd run build --prefix apps/web
+```
 
-## Environment Variables
+后端测试：
 
-Copy `.env.example` to `.env` for local development. Docker Compose sets
-these automatically.
+```powershell
+cd apps/api
+pytest
+```
 
-| Variable             | Default                                                 |
-| -------------------- | ------------------------------------------------------- |
-| DATABASE_URL         | postgresql+asyncpg://atlas:atlas@localhost:5432/lifeatlas |
-| NEXT_PUBLIC_API_URL  | http://localhost:8000                                   |
+## API 概览
+
+主要接口：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/` | API 健康检查 |
+| GET | `/places` | 获取地点列表 |
+| GET | `/stats/summary` | 获取汇总统计 |
+| GET | `/stats/countries` | 获取国家统计 |
+| GET | `/stats/provinces` | 获取省/州统计 |
+| GET | `/stats/status-breakdown` | 获取地点状态分布 |
+| GET | `/stats/timeline` | 按访问日期返回月度访问次数和累计次数 |
+
+Timeline 使用 `visits.visit_date` 统计访问记录，而不是地点的创建时间。同一地点多次访问会按多条访问记录分别计数。
+
+## 环境变量
+
+本地开发时可复制 `.env.example` 并按需修改：
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `DATABASE_URL` | `postgresql+asyncpg://atlas:atlas@localhost:5432/lifeatlas` | 数据库连接地址 |
+| `BACKEND_PORT` | `8000` | 后端端口配置 |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | 前端访问 API 的地址 |
+
+Docker Compose 会自动为容器设置数据库地址和 API 地址。
+
+## 地图边界数据
+
+地图边界文件位于 `apps/web/public/data`。如果需要重新生成边界数据：
+
+```powershell
+python scripts/fetch_boundaries.py
+```
+
+边界数据说明见 [docs/map-boundaries.md](docs/map-boundaries.md)。
+
+## 常见问题
+
+### `API unavailable: http://localhost:8000/...`
+
+说明前端无法连接后端。确认 API 已启动，并检查 8000 端口：
+
+```powershell
+Invoke-WebRequest http://localhost:8000/
+```
+
+如果使用 Docker：
+
+```powershell
+docker compose up -d api
+docker compose logs api
+```
+
+### `/stats/timeline` 返回 500
+
+先确认数据库迁移已执行：
+
+```powershell
+cd apps/api
+alembic upgrade head
+```
+
+然后重启 API。Timeline 依赖 `visits` 表及 `visit_date` 字段。
+
+### 端口被占用
+
+查看端口占用：
+
+```powershell
+netstat -ano | Select-String ':8000'
+netstat -ano | Select-String ':3000'
+```
+
+可以停止占用端口的旧进程，或修改前后端启动端口及 `NEXT_PUBLIC_API_URL`。
+
+## 项目结构
+
+```text
+Life-Atlas/
+├─ apps/
+│  ├─ api/                 # FastAPI 后端、模型、路由和迁移
+│  └─ web/                 # Next.js 前端
+├─ database/               # 数据库相关资源
+├─ docs/                   # 项目文档
+├─ docker/                 # API 和 Web Dockerfile
+├─ scripts/                # 辅助脚本
+├─ storage/                # 本地存储目录
+├─ docker-compose.yml
+└─ package.json
+```
