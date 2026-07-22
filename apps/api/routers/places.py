@@ -121,7 +121,6 @@ async def create_place(payload: PlaceCreate, db: AsyncSession = Depends(get_db))
         await _cascade_visited(db, city)
 
     await db.commit()
-    await db.refresh(place, attribute_names=["city", "city.province", "city.province.country"])
 
     # Eager load the full chain
     stmt = (
