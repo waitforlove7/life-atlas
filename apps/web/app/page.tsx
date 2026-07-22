@@ -14,10 +14,25 @@ interface CountryStat {
   iso_code: string; name: string; visited: boolean;
 }
 
+interface ProvinceStat {
+  name: string; visited: boolean;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   visited: '#22c55e', wishlist: '#eab308', lived: '#3b82f6',
   worked: '#8b5cf6', studied: '#f97316',
 };
+
+function matchProvinceVisited(provinceName: string, provinceStats: ProvinceStat[]): boolean {
+  const name = provinceName.toLowerCase().trim();
+  for (const ps of provinceStats) {
+    const dbName = ps.name.toLowerCase().trim();
+    if (name === dbName || name.startsWith(dbName) || dbName.startsWith(name)) {
+      return ps.visited;
+    }
+  }
+  return false;
+}
 
 export default function Home() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -25,14 +40,18 @@ export default function Home() {
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [visitedCountries, setVisitedCountries] = useState<Set<string>>(new Set());
+  const [provinceStats, setProvinceStats] = useState<ProvinceStat[]>([]);
   const [loading, setLoading] = useState(true);
+  const currentIso = useRef<string | null>(null);
 
   useEffect(() => {
     Promise.all([
       fetch(API_URL + '/places').then(r => r.json()),
       fetch(API_URL + '/stats/countries').then(r => r.json()),
-    ]).then(([placesData, countriesData]) => {
+      fetch(API_URL + '/stats/provinces').then(r => r.json()),
+    ]).then(([placesData, countriesData, provincesData]) => {
       setPlaces(placesData);
+      setProvinceStats(provincesData);
       setVisitedCountries(new Set(
         (countriesData as CountryStat[]).filter(c => c.visited).map(c => c.iso_code)
       ));
@@ -58,46 +77,29 @@ export default function Home() {
       if (!map.current) return;
 
       if (!map.current.getSource('countries')) {
-        map.current.addSource('countries', {
-          type: 'geojson',
-          data: '/data/countries.geojson',
-        });
+        map.current.addSource('countries', { type: 'geojson', data: '/data/countries.geojson' });
       }
-
       if (!map.current.getLayer('countries-fill')) {
-        map.current.addLayer({
-          id: 'countries-fill',
-          type: 'fill',
-          source: 'countries',
-          paint: {
-            'fill-color': ['case', ['in', ['get', 'ISO_A3'], ['literal', []]], '#dbeafe', '#e5e7eb'],
-            'fill-opacity': 0.7,
-          },
-        });
+        map.current.addLayer({ id: 'countries-fill', type: 'fill', source: 'countries',
+          paint: { 'fill-color': ['case', ['in', ['get', 'ISO_A3'], ['literal', []]], '#dbeafe', '#e5e7eb'], 'fill-opacity': 0.7 } });
       }
-
       if (!map.current.getLayer('countries-outline')) {
-        map.current.addLayer({
-          id: 'countries-outline',
-          type: 'line',
-          source: 'countries',
-          paint: { 'line-color': '#9ca3af', 'line-width': 0.5 },
-        });
+        map.current.addLayer({ id: 'countries-outline', type: 'line', source: 'countries',
+          paint: { 'line-color': '#9ca3af', 'line-width': 0.5 } });
       }
+    });
 
-      map.current.on('click', 'countries-fill', (e) => {
-        if (!e.features?.length || !map.current) return;
-        const props = e.features[0].properties as Record<string, unknown>;
-        const iso = props.ISO_A3 as string;
-        const visited = visitedCountries.has(iso);
-        new maplibregl.Popup()
-          .setLngLat(e.lngLat)
-          .setHTML('<strong>' + props.ADMIN + '</strong><br/><span style="font-size:12px;color:' + (visited ? '#22c55e' : '#9ca3af') + '">' + (visited ? 'Visited' : 'Not visited') + '</span>')
-          .addTo(map.current);
-      });
-
-      map.current.on('mouseenter', 'countries-fill', () => { if (map.current) map.current.getCanvas().style.cursor = 'pointer'; });
-      map.current.on('mouseleave', 'countries-fill', () => { if (map.current) map.current.getCanvas().style.cursor = ''; });
+    map.current.on('zoom', () => {
+      if (!map.current) return;
+      const zoom = map.current.getZoom();
+      // Show country labels at zoom 2+
+      if (map.current.getLayer('countries-fill')) {
+        map.current.setLayoutProperty('countries-fill', 'visibility', zoom >= 2 ? 'visible' : 'none');
+      }
+      // Show provinces at zoom 5+
+      if (map.current.getLayer('provinces-fill')) {
+        map.current.setLayoutProperty('provinces-fill', 'visibility', zoom >= 5 ? 'visible' : 'none');
+      }
     });
 
     return () => {
@@ -106,14 +108,73 @@ export default function Home() {
     };
   }, []);
 
+  // Load GADM province boundaries when zooming into a country
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) return;
+    if (!map.current) return;
+    const handleZoom = async () => {
+      if (!map.current || map.current.getZoom() < 5) return;
+      // Determine which country is in view (simplified: check center point)
+      const center = map.current.getCenter();
+      const features = map.current.queryRenderedFeatures(
+        map.current.project([center.lng, center.lat]),
+        { layers: ['countries-fill'] }
+      );
+      if (!features.length) return;
+      const iso = (features[0].properties as Record<string, string>).ISO_A3;
+      if (!iso || iso === currentIso.current) return;
+      currentIso.current = iso;
+
+      try {
+        const resp = await fetch('/data/gadm/' + iso + '/level_1.json');
+        if (!resp.ok) return;
+        const geojson = await resp.json();
+
+        // Remove old province layers if any
+        if (map.current.getLayer('provinces-fill')) map.current.removeLayer('provinces-fill');
+        if (map.current.getLayer('provinces-outline')) map.current.removeLayer('provinces-outline');
+        if (map.current.getSource('provinces')) map.current.removeSource('provinces');
+
+        // Add visited status to properties
+        geojson.features.forEach((f: { properties: Record<string, unknown> }) => {
+          const name = f.properties.NAME_1 as string;
+          (f.properties as Record<string, unknown>).visited = matchProvinceVisited(name, provinceStats);
+        });
+
+        map.current.addSource('provinces', { type: 'geojson', data: geojson });
+        map.current.addLayer({ id: 'provinces-fill', type: 'fill', source: 'provinces',
+          paint: { 'fill-color': ['case', ['get', 'visited'], '#bbf7d0', '#e5e7eb'], 'fill-opacity': 0.5 } });
+        map.current.addLayer({ id: 'provinces-outline', type: 'line', source: 'provinces',
+          paint: { 'line-color': '#9ca3af', 'line-width': 0.5 } });
+
+        // Province click
+        map.current.on('click', 'provinces-fill', (e) => {
+          if (!e.features?.length || !map.current) return;
+          const props = e.features[0].properties as Record<string, unknown>;
+          new maplibregl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML('<strong>' + (props.NAME_1 || '') + '</strong><br/>' + (props.visited ? 'Visited' : 'Not visited'))
+            .addTo(map.current);
+        });
+      } catch { /* GADM data not available for this country */ }
+    };
+
+    map.current.on('zoom', handleZoom);
+    map.current.on('moveend', handleZoom);
+    return () => {
+      map.current?.off('zoom', handleZoom);
+      map.current?.off('moveend', handleZoom);
+    };
+  }, [provinceStats]);
+
+  // Update country fill when visitedCountries changes
+  useEffect(() => {
+    if (!map.current || !map.current.isStyleLoaded() || !map.current.getLayer('countries-fill')) return;
     const arr = Array.from(visitedCountries);
-    if (map.current.getLayer('countries-fill')) {
-      map.current.setPaintProperty('countries-fill', 'fill-color', ['case', ['in', ['get', 'ISO_A3'], ['literal', arr]], '#dbeafe', '#e5e7eb']);
-    }
+    map.current.setPaintProperty('countries-fill', 'fill-color',
+      ['case', ['in', ['get', 'ISO_A3'], ['literal', arr]], '#dbeafe', '#e5e7eb']);
   }, [visitedCountries]);
 
+  // Place markers
   useEffect(() => {
     if (!map.current || !places.length) return;
     markersRef.current.forEach(m => m.remove());
