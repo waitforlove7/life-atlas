@@ -1,5 +1,7 @@
 # Life Atlas
 
+[English Documentation](README.en.md)
+
 Life Atlas 是一个个人旅行与生活地图，用来记录去过、居住、工作、学习或计划前往的地点，并在地图和统计面板中查看自己的经历。
 
 ## 功能
