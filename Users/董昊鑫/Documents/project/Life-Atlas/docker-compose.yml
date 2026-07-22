@@ -1,0 +1,10 @@
+services:
+  postgres:
+    image: postgis/postgis
+    container_name: life-atlas-db
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas
+      POSTGRES_DB: lifeatlas
+    ports:
+      - "5432:5432"
