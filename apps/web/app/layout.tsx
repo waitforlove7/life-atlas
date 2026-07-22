@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Atlas ¡ª Your Personal World Atlas',
+  title: 'Atlas - Your Personal World Atlas',
   description: 'Record where you have been, lived, studied, and explored.',
 };
 
