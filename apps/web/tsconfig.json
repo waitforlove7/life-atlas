@@ -20,18 +20,6 @@
     "paths": {
       "@/*": [
         "./*"
-      ],
-      "@atlas/ui": [
-        "../../packages/ui/src"
-      ],
-      "@atlas/types": [
-        "../../packages/types/src"
-      ],
-      "@atlas/map": [
-        "../../packages/map/src"
-      ],
-      "@atlas/utils": [
-        "../../packages/utils/src"
       ]
     },
     "plugins": [
