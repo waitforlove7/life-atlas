@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
@@ -57,78 +57,63 @@ export default function Home() {
     map.current.once('load', () => {
       if (!map.current) return;
 
-      // --- Country fill layer ---
-      map.current.addSource('countries', {
-        type: 'geojson',
-        data: '/data/countries.geojson',
-      });
+      if (!map.current.getSource('countries')) {
+        map.current.addSource('countries', {
+          type: 'geojson',
+          data: '/data/countries.geojson',
+        });
+      }
 
-      map.current.addLayer({
-        id: 'countries-fill',
-        type: 'fill',
-        source: 'countries',
-        paint: {
-          'fill-color': [
-            'case',
-            ['in', ['get', 'ISO_A3'], ['literal', Array.from(visitedCountries)]],
-            '#dbeafe',
-            '#e5e7eb'
-          ],
-          'fill-opacity': 0.7,
-        },
-      });
+      if (!map.current.getLayer('countries-fill')) {
+        map.current.addLayer({
+          id: 'countries-fill',
+          type: 'fill',
+          source: 'countries',
+          paint: {
+            'fill-color': ['case', ['in', ['get', 'ISO_A3'], ['literal', []]], '#dbeafe', '#e5e7eb'],
+            'fill-opacity': 0.7,
+          },
+        });
+      }
 
-      map.current.addLayer({
-        id: 'countries-outline',
-        type: 'line',
-        source: 'countries',
-        paint: {
-          'line-color': '#9ca3af',
-          'line-width': 0.5,
-        },
-      });
+      if (!map.current.getLayer('countries-outline')) {
+        map.current.addLayer({
+          id: 'countries-outline',
+          type: 'line',
+          source: 'countries',
+          paint: { 'line-color': '#9ca3af', 'line-width': 0.5 },
+        });
+      }
 
-      // Click on country
       map.current.on('click', 'countries-fill', (e) => {
         if (!e.features?.length || !map.current) return;
         const props = e.features[0].properties as Record<string, unknown>;
-        const name = props.ADMIN as string;
         const iso = props.ISO_A3 as string;
         const visited = visitedCountries.has(iso);
         new maplibregl.Popup()
           .setLngLat(e.lngLat)
-          .setHTML(
-            '<strong>' + name + '</strong><br/>' +
-            '<span style="font-size:12px;color:' + (visited ? '#22c55e' : '#9ca3af') + '">' +
-            (visited ? 'Visited' : 'Not visited') + '</span>'
-          )
+          .setHTML('<strong>' + props.ADMIN + '</strong><br/><span style="font-size:12px;color:' + (visited ? '#22c55e' : '#9ca3af') + '">' + (visited ? 'Visited' : 'Not visited') + '</span>')
           .addTo(map.current);
       });
 
-      map.current.on('mouseenter', 'countries-fill', () => {
-        if (map.current) map.current.getCanvas().style.cursor = 'pointer';
-      });
-      map.current.on('mouseleave', 'countries-fill', () => {
-        if (map.current) map.current.getCanvas().style.cursor = '';
-      });
+      map.current.on('mouseenter', 'countries-fill', () => { if (map.current) map.current.getCanvas().style.cursor = 'pointer'; });
+      map.current.on('mouseleave', 'countries-fill', () => { if (map.current) map.current.getCanvas().style.cursor = ''; });
     });
 
-    return () => { map.current?.remove(); map.current = null; };
+    return () => {
+      map.current?.remove();
+      map.current = null;
+    };
   }, []);
 
-  // Update country fill when visitedCountries changes
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
     const arr = Array.from(visitedCountries);
-    (map.current as maplibregl.Map).setPaintProperty('countries-fill', 'fill-color', [
-      'case',
-      ['in', ['get', 'ISO_A3'], ['literal', arr]],
-      '#dbeafe',
-      '#e5e7eb'
-    ]);
+    if (map.current.getLayer('countries-fill')) {
+      map.current.setPaintProperty('countries-fill', 'fill-color', ['case', ['in', ['get', 'ISO_A3'], ['literal', arr]], '#dbeafe', '#e5e7eb']);
+    }
   }, [visitedCountries]);
 
-  // Place markers
   useEffect(() => {
     if (!map.current || !places.length) return;
     markersRef.current.forEach(m => m.remove());
@@ -138,7 +123,6 @@ export default function Home() {
       const color = STATUS_COLORS[place.status] || '#6b7280';
       const el = document.createElement('div');
       el.style.cssText = 'background:' + color + ';width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);cursor:pointer;transform:translate(-50%,-50%);';
-
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([place.longitude, place.latitude])
         .setPopup(new maplibregl.Popup({ offset: 16 }).setHTML(
@@ -163,9 +147,7 @@ export default function Home() {
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       <div ref={mapContainer} id="map" />
       {loading && (
-        <div style={{ position: 'absolute', top: 16, left: 16, background: 'white',
-          padding: '8px 16px', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
-          fontSize: 14, fontFamily: 'system-ui, sans-serif' }}>
+        <div style={{ position: 'absolute', top: 16, left: 16, background: 'white', padding: '8px 16px', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.15)', fontSize: 14, fontFamily: 'system-ui, sans-serif' }}>
           Loading...
         </div>
       )}
