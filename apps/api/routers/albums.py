@@ -13,6 +13,8 @@ from schemas.place import AlbumResponse
 router = APIRouter(prefix="/places/{place_id}/albums", tags=["albums"])
 
 STORAGE_DIR = Path(__file__).resolve().parents[1] / "storage" / "covers"
+if not STORAGE_DIR.parent.exists():
+    STORAGE_DIR = Path(__file__).resolve().parents[3] / "storage" / "covers"
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
 ALLOWED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
