@@ -28,7 +28,7 @@ app.add_middleware(
 app.include_router(places.router)
 app.include_router(stats.router)
 app.include_router(albums.router)
-app.mount("/storage", StaticFiles(directory=Path(__file__).resolve().parents[2] / "storage"), name="storage")
+app.mount("/storage", StaticFiles(directory=Path(__file__).resolve().parent / "storage"), name="storage")
 
 
 @app.get("/")
