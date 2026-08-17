@@ -176,7 +176,6 @@ async def update_place(
         raise HTTPException(status_code=404, detail="Place not found")
 
     changes = payload.model_dump(exclude_unset=True)
-    changes.pop("visit_date", None)
     longitude = changes.pop("longitude", None)
     latitude = changes.pop("latitude", None)
     if longitude is not None or latitude is not None:

@@ -132,7 +132,15 @@ pytest
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/` | API 健康检查 |
-| GET | `/places` | 获取地点列表 |
+| GET | `/places` | 获取地点列表（支持 `status`、`country` 筛选） |
+| POST | `/places` | 创建地点（`visits` 接受访问日期数组，如 `["2026-07-20"]`） |
+| GET | `/places/{id}` | 获取地点详情（含访问记录与相册） |
+| PATCH | `/places/{id}` | 更新地点信息（名称、坐标、状态、描述、封面） |
+| DELETE | `/places/{id}` | 删除地点 |
+| POST | `/places/{id}/visits` | 添加访问记录（查询参数 `visit_date`） |
+| DELETE | `/places/{id}/visits/{visit_id}` | 删除访问记录 |
+| POST | `/places/{id}/albums` | 上传相册图片（JPG/PNG/WebP/GIF，≤10MB） |
+| DELETE | `/places/{id}/albums/{album_id}` | 删除相册图片 |
 | GET | `/stats/summary` | 获取汇总统计 |
 | GET | `/stats/countries` | 获取国家统计 |
 | GET | `/stats/provinces` | 获取省/州统计 |
@@ -148,10 +156,10 @@ Timeline 使用 `visits.visit_date` 统计访问记录，而不是地点的创�
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `DATABASE_URL` | `postgresql+asyncpg://atlas:atlas@localhost:5432/lifeatlas` | 数据库连接地址 |
-| `BACKEND_PORT` | `8000` | 后端端口配置 |
+| `DEBUG` | `true` | 是否输出 SQL 调试日志 |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | 前端访问 API 的地址 |
 
-Docker Compose 会自动为容器设置数据库地址和 API 地址。
+后端端口由启动命令（`uvicorn --port`）或 Docker Compose 的端口映射决定，不通过环境变量配置。Docker Compose 会自动为容器设置数据库地址和 API 地址。
 
 ## 地图边界数据
 
@@ -208,7 +216,14 @@ netstat -ano | Select-String ':3000'
 Life-Atlas/
 ├─ apps/
 │  ├─ api/                 # FastAPI 后端、模型、路由和迁移
+│  │  ├─ routers/          # 路由（places、stats、albums）
+│  │  ├─ models/           # SQLAlchemy 模型
+│  │  └─ schemas/          # Pydantic 请求/响应模型
 │  └─ web/                 # Next.js 前端
+│     ├─ app/              # 页面与布局
+│     ├─ components/       # UI 组件（统计面板、图例、对话框）
+│     ├─ hooks/            # 地图逻辑（useAtlasMap）
+│     └─ lib/              # 共享类型与 API 客户端
 ├─ database/               # 数据库相关资源
 ├─ docs/                   # 项目文档
 ├─ docker/                 # API 和 Web Dockerfile

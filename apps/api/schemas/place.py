@@ -24,7 +24,6 @@ class PlaceUpdate(BaseModel):
     longitude: float | None = Field(None, ge=-180, le=180)
     latitude: float | None = Field(None, ge=-90, le=90)
     status: str | None = Field(None, pattern=r"^(visited|wishlist|lived|worked|studied)$")
-    visits: list[date] = []
     description: str | None = None
     cover_image: str | None = Field(None, max_length=500)
 
